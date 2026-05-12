@@ -53,4 +53,24 @@ const updateBudget = async (req, res) => {
     }
 };
 
-module.exports = { getBudgets, createBudget, updateBudget };
+const deleteBudget = async (req, res) => {
+    try {
+        const budget = await Budget.findById(req.params.id);
+
+        if (budget) {
+            if (budget.user.toString() !== req.user._id.toString()) {
+                res.status(401).json({ message: 'Not authorized' });
+                return;
+            }
+
+            await Budget.deleteOne({ _id: req.params.id });
+            res.json({ message: 'Budget removed' });
+        } else {
+            res.status(404).json({ message: 'Budget not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error' });
+    }
+};
+
+module.exports = { getBudgets, createBudget, updateBudget, deleteBudget };

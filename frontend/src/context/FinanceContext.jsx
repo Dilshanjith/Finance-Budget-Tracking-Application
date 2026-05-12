@@ -48,7 +48,12 @@ export const FinanceProvider = ({ children }) => {
 
     const deleteCategory = async (id) => {
         await api.delete(`/categories/${id}`);
-        setCategories(categories.filter((c) => c._id !== id));
+        await fetchData(); // Refetch everything to sync cascading changes
+    };
+
+    const updateCategory = async (id, data) => {
+        await api.put(`/categories/${id}`, data);
+        await fetchData(); // Refetch everything to sync cascading changes
     };
 
     const addBudget = async (data) => {
@@ -61,6 +66,11 @@ export const FinanceProvider = ({ children }) => {
         setBudgets(budgets.map((b) => (b._id === id ? res.data : b)));
     };
 
+    const deleteBudget = async (id) => {
+        await api.delete(`/budgets/${id}`);
+        setBudgets(budgets.filter((b) => b._id !== id));
+    };
+
     return (
         <FinanceContext.Provider
             value={{
@@ -71,8 +81,10 @@ export const FinanceProvider = ({ children }) => {
                 deleteTransaction,
                 addCategory,
                 deleteCategory,
+                updateCategory,
                 addBudget,
                 updateBudget,
+                deleteBudget,
             }}
         >
             {children}

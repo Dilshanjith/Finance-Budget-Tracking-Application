@@ -1,10 +1,11 @@
 import { useState, useContext, useMemo } from 'react';
 import { FinanceContext } from '../context/FinanceContext';
-import { Plus } from 'lucide-react';
+import { Plus, Pencil, Trash2 } from 'lucide-react';
 
 const Budgets = () => {
-    const { budgets, categories, addBudget, updateBudget, transactions } = useContext(FinanceContext);
+    const { budgets, categories, addBudget, updateBudget, deleteBudget, transactions } = useContext(FinanceContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     
     const [formData, setFormData] = useState({
         category: '',
@@ -32,13 +33,35 @@ const Budgets = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const existing = budgets.find(b => b.category === formData.category);
-        if (existing) {
-            await updateBudget(existing._id, { ...formData, amount: Number(formData.amount) });
+        
+        if (editingId) {
+            await updateBudget(editingId, { ...formData, amount: Number(formData.amount) });
         } else {
-            await addBudget({ ...formData, amount: Number(formData.amount) });
+            const existing = budgets.find(b => b.category === formData.category);
+            if (existing) {
+                await updateBudget(existing._id, { ...formData, amount: Number(formData.amount) });
+            } else {
+                await addBudget({ ...formData, amount: Number(formData.amount) });
+            }
         }
+        closeModal();
+    };
+
+    const handleEdit = (budget) => {
+        setEditingId(budget._id);
+        setFormData({ category: budget.category, amount: budget.amount, period: budget.period });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this budget?')) {
+            await deleteBudget(id);
+        }
+    };
+
+    const closeModal = () => {
         setIsModalOpen(false);
+        setEditingId(null);
         setFormData({ category: '', amount: '', period: 'Monthly' });
     };
 
@@ -54,15 +77,33 @@ const Budgets = () => {
             <div className="dashboard-grid">
                 {budgetProgress.map((b) => (
                     <div key={b._id} className="card" style={{ border: b.exceeded ? '1px solid var(--danger)' : '' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
-                            <h3 style={{ fontWeight: 600 }}>{b.category}</h3>
-                            <span style={{ color: 'var(--text-muted)' }}>{b.period}</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
+                            <div>
+                                <h3 style={{ fontWeight: 600, fontSize: '1.1rem' }}>{b.category}</h3>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{b.period}</span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                                <button 
+                                    onClick={() => handleEdit(b)}
+                                    style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', padding: '4px' }}
+                                    title="Edit Budget"
+                                >
+                                    <Pencil size={18} />
+                                </button>
+                                <button 
+                                    onClick={() => handleDelete(b._id)}
+                                    style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}
+                                    title="Delete Budget"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                            </div>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                            <span>${b.spent.toFixed(2)}</span>
-                            <span style={{ color: 'var(--text-muted)' }}>of ${b.amount.toFixed(2)}</span>
+                            <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>${b.spent.toFixed(2)}</span>
+                            <span style={{ color: 'var(--text-muted)', fontWeight: 500 }}>of ${b.amount.toFixed(2)}</span>
                         </div>
-                        <div style={{ height: '8px', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: '4px', overflow: 'hidden' }}>
+                        <div style={{ height: '8px', backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: '4px', overflow: 'hidden' }}>
                             <div style={{ 
                                 height: '100%', 
                                 width: `${b.progress}%`, 
@@ -71,7 +112,7 @@ const Budgets = () => {
                             }}></div>
                         </div>
                         {b.exceeded && (
-                            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--danger)' }}>
+                            <div style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--danger)', fontWeight: 600 }}>
                                 Budget exceeded by ${(b.spent - b.amount).toFixed(2)}
                             </div>
                         )}
@@ -83,8 +124,8 @@ const Budgets = () => {
                 <div className="modal-overlay">
                     <div className="card modal-content">
                         <div className="modal-header">
-                            <h2>Set Budget</h2>
-                            <button className="modal-close" onClick={() => setIsModalOpen(false)}>&times;</button>
+                            <h2>{editingId ? 'Edit Budget' : 'Set Budget'}</h2>
+                            <button className="modal-close" onClick={closeModal}>&times;</button>
                         </div>
                         <form onSubmit={handleSubmit}>
                             <div className="input-group">
@@ -108,8 +149,8 @@ const Budgets = () => {
                                 </select>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                                <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setIsModalOpen(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save</button>
+                                <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={closeModal}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingId ? 'Update' : 'Save'}</button>
                             </div>
                         </form>
                     </div>

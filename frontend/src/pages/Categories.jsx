@@ -1,10 +1,11 @@
 import { useState, useContext } from 'react';
 import { FinanceContext } from '../context/FinanceContext';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, Pencil } from 'lucide-react';
 
 const Categories = () => {
-    const { categories, addCategory, deleteCategory } = useContext(FinanceContext);
+    const { categories, addCategory, deleteCategory, updateCategory } = useContext(FinanceContext);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingId, setEditingId] = useState(null);
     
     const [formData, setFormData] = useState({
         name: '',
@@ -13,8 +14,29 @@ const Categories = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        await addCategory(formData);
+        if (editingId) {
+            await updateCategory(editingId, formData);
+        } else {
+            await addCategory(formData);
+        }
+        closeModal();
+    };
+
+    const handleEdit = (category) => {
+        setEditingId(category._id);
+        setFormData({ name: category.name, type: category.type });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (id) => {
+        if (window.confirm('Are you sure you want to delete this category?')) {
+            await deleteCategory(id);
+        }
+    };
+
+    const closeModal = () => {
         setIsModalOpen(false);
+        setEditingId(null);
         setFormData({ name: '', type: 'Expense' });
     };
 
@@ -34,21 +56,34 @@ const Categories = () => {
                             <tr>
                                 <th>Name</th>
                                 <th>Type</th>
-                                <th>Actions</th>
+                                <th style={{ textAlign: 'right' }}>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {categories.map((c) => (
                                 <tr key={c._id}>
-                                    <td>{c.name}</td>
+                                    <td style={{ fontWeight: 500 }}>{c.name}</td>
                                     <td>
                                         <span className={`badge ${c.type === 'Income' ? 'badge-income' : 'badge-expense'}`}>
                                             {c.type}
                                         </span>
                                     </td>
-                                    <td>
-                                        <button className="btn btn-ghost" style={{ padding: '0.5rem', color: 'var(--danger)' }} onClick={() => deleteCategory(c._id)}>
-                                            <Trash2 size={16} />
+                                    <td style={{ textAlign: 'right' }}>
+                                        <button 
+                                            className="btn btn-ghost" 
+                                            style={{ padding: '0.5rem', color: 'var(--primary)', marginRight: '0.5rem' }} 
+                                            onClick={() => handleEdit(c)}
+                                            title="Edit Category"
+                                        >
+                                            <Pencil size={18} />
+                                        </button>
+                                        <button 
+                                            className="btn btn-ghost" 
+                                            style={{ padding: '0.5rem', color: 'var(--danger)' }} 
+                                            onClick={() => handleDelete(c._id)}
+                                            title="Delete Category"
+                                        >
+                                            <Trash2 size={18} />
                                         </button>
                                     </td>
                                 </tr>
@@ -69,8 +104,8 @@ const Categories = () => {
                 <div className="modal-overlay">
                     <div className="card modal-content">
                         <div className="modal-header">
-                            <h2>Add Category</h2>
-                            <button className="modal-close" onClick={() => setIsModalOpen(false)}>&times;</button>
+                            <h2>{editingId ? 'Edit Category' : 'Add Category'}</h2>
+                            <button className="modal-close" onClick={closeModal}>&times;</button>
                         </div>
                         <form onSubmit={handleSubmit}>
                             <div className="input-group">
@@ -85,8 +120,8 @@ const Categories = () => {
                                 </select>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                                <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setIsModalOpen(false)}>Cancel</button>
-                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save</button>
+                                <button type="button" className="btn btn-ghost" style={{ flex: 1 }} onClick={closeModal}>Cancel</button>
+                                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>{editingId ? 'Update' : 'Save'}</button>
                             </div>
                         </form>
                     </div>
